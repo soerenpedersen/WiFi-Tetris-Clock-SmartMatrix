@@ -17,26 +17,13 @@
 #include <MatrixHardware_ESP32_V0.h>
 #include <SmartMatrix.h>
 
-//For rorosaurus' excellent driver board: https://github.com/rorosaurus/esp32-hub75-driver
-#define GPIOPINOUT ESP32_FORUM_PINOUT
-
-//SmartMatrix display configuration
-#define COLOR_DEPTH 24                  // Choose the color depth used for storing pixels in the layers: 24 or 48 (24 is good for most sketches - If the sketch uses type `rgb24` directly, COLOR_DEPTH must be 24)
-const uint16_t kMatrixWidth = 64;       // Set to the width of your display, must be a multiple of 8
-const uint16_t kMatrixHeight = 32;      // Set to the height of your display
-const uint8_t kRefreshDepth = 24;       // Tradeoff of color quality vs refresh rate, max brightness, and RAM usage.  36 is typically good, drop down to 24 if you need to.  On Teensy, multiples of 3, up to 48: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48.  On ESP32: 24, 36, 48
-const uint8_t kDmaBufferRows = 4;       // known working: 2-4, use 2 to save RAM, more to keep from dropping frames and automatically lowering refresh rate.  (This isn't used on ESP32, leave as default)
-const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the configuration that matches your panels.  See more details in MatrixCommonHub75.h and the docs: https://github.com/pixelmatix/SmartMatrix/wiki
-const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
-
-SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
-const uint8_t kBackgroundLayerOptions = (SM_BACKGROUND_OPTIONS_NONE);
-SMARTMATRIX_ALLOCATE_BACKGROUND_LAYER(backgroundLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kBackgroundLayerOptions);
-
 // ---- Stuff to configure ----
 // Initialize Wifi connection to the router
 char ssid[] = "SSID";     // your network SSID (name)
 char password[] = "PASSWORD"; // your network key
+
+//Brightness of display
+#define BRIGHTNESS 255
 
 // Set a timezone using the following list
 // https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -51,6 +38,20 @@ bool twelveHourFormat = false;
 // When true, all digits will be replaced every minute.
 bool forceRefresh = true;
 // -----------------------------
+
+//SmartMatrix display configuration
+#define GPIOPINOUT ESP32_FORUM_PINOUT   // For rorosaurus' excellent driver board: https://github.com/rorosaurus/esp32-hub75-driver
+#define COLOR_DEPTH 24                  // Choose the color depth used for storing pixels in the layers: 24 or 48 (24 is good for most sketches - If the sketch uses type `rgb24` directly, COLOR_DEPTH must be 24)
+const uint16_t kMatrixWidth = 64;       // Set to the width of your display, must be a multiple of 8
+const uint16_t kMatrixHeight = 32;      // Set to the height of your display
+const uint8_t kRefreshDepth = 24;       // Tradeoff of color quality vs refresh rate, max brightness, and RAM usage.  36 is typically good, drop down to 24 if you need to.  On Teensy, multiples of 3, up to 48: 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48.  On ESP32: 24, 36, 48
+const uint8_t kDmaBufferRows = 4;       // known working: 2-4, use 2 to save RAM, more to keep from dropping frames and automatically lowering refresh rate.  (This isn't used on ESP32, leave as default)
+const uint8_t kPanelType = SM_PANELTYPE_HUB75_32ROW_MOD16SCAN;   // Choose the configuration that matches your panels.  See more details in MatrixCommonHub75.h and the docs: https://github.com/pixelmatix/SmartMatrix/wiki
+const uint32_t kMatrixOptions = (SM_HUB75_OPTIONS_NONE);        // see docs for options: https://github.com/pixelmatix/SmartMatrix/wiki
+
+SMARTMATRIX_ALLOCATE_BUFFERS(matrix, kMatrixWidth, kMatrixHeight, kRefreshDepth, kDmaBufferRows, kPanelType, kMatrixOptions);
+const uint8_t kBackgroundLayerOptions = (SM_BACKGROUND_OPTIONS_NONE);
+SMARTMATRIX_ALLOCATE_BACKGROUND_LAYER(backgroundLayer, kMatrixWidth, kMatrixHeight, COLOR_DEPTH, kBackgroundLayerOptions);
 
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 hw_timer_t * timer = NULL;
@@ -80,10 +81,8 @@ void animationHandler()
 
     if (displayIntro) {
       finishedAnimating = tetris.drawText(1, 21);
-      backgroundLayer.swapBuffers(false);
     }
     else {
-
       if (twelveHourFormat) {
         // Place holders for checking are any of the tetris objects
         // currently still animating.
@@ -104,8 +103,8 @@ void animationHandler()
       else {
         finishedAnimating = tetris.drawNumbers(2, 26, showColon);
       }
-      backgroundLayer.swapBuffers(false);
     }
+    backgroundLayer.swapBuffers(false);
   }
 }
 
@@ -165,8 +164,7 @@ void setup() {
   // Intialise display library
   matrix.addLayer(&backgroundLayer);
   matrix.begin();
-  //Set brightness
-  matrix.setBrightness(255);
+  matrix.setBrightness(BRIGHTNESS);
   backgroundLayer.fillScreen(0);
   backgroundLayer.swapBuffers(false);
 
@@ -185,8 +183,8 @@ void setup() {
   Serial.println(myTZ.dateTime());
 
   // "Powered By"
-  //backgroundLayer.fillScreen(0);
-  //backgroundLayer.swapBuffers(false);
+  backgroundLayer.fillScreen(0);
+  backgroundLayer.swapBuffers(false);
   drawIntro(6, 12);
   delay(2000);
 
